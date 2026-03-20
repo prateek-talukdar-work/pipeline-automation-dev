@@ -1,15 +1,16 @@
-trigger:
-  branches:
-    include:
-      - main
+name: Hello on merge to main
 
-pool:
-  vmImage: ubuntu-latest
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
 
 jobs:
   post-merge-step:
-    if: github.event.pull_request_merged == true
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Say hello
-        run: echo "Hello there"  
+        run: echo "Hello there"
