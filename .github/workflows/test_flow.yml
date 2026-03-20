@@ -48,10 +48,8 @@ jobs:
           git push origin develop2
           echo "✅ Created develop2 branch from main"
 
-      
-           - name: Test merge conflicts & create PR or merge
+      - name: Test merge conflicts & create PR or merge
         id: pr-check
-        name: pr-creation
         run: |
           git fetch origin develop2
           
@@ -68,22 +66,6 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: "❌ Merge conflicts: master → develop2"
+          title: "❌ Merge conflicts: main → develop2"
           body: "Automated sync detected merge conflicts.\n\nPlease resolve conflicts and merge manually."
-          base: develop2
-          branch: "auto-sync-master-${{ github.run_id }}"
-          delete-branch: true
-
-      - name: Auto-merge if no conflicts
-        if: steps.pr-check.outputs.no-conflicts == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr create \
-            --title "chore: sync master into develop2" \
-            --body "Automated sync from master → develop2\n\n✅ No conflicts - auto-merging..." \
-            --base develop2 \
-            --head "auto-sync-master-${{ github.run_id }}"
-          
-          gh pr merge "auto-sync-master-${{ github.run_id }}" --auto --merge
-
+          base:
