@@ -1,12 +1,73 @@
-      - name: Auto-merge PR if no conflicts
-        if: steps.pr-check.outputs.no-conflicts == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "🚀 Auto-merging..."
-          gh pr merge "${{ steps.pull-request.outputs.pull-request-url }}" --auto --merge
-        continue-on-error: true  # ← FIXED: Same level as 'run', not under it
+name: Hello on merge to main
 
-      - name: Skip auto-merge if conflicts
-        if: steps.pr-check.outputs.no-conflicts != 'true'
-        run: echo "PR created - manual merge required due to conflicts"
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+jobs:
+  post-merge-step:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Say hello
+        run: echo "Hello there"
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current branch
+        id: current-branch
+        run: echo "current-branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
+
+      - name: Switch to main (if needed)
+        if: steps.current-branch.outputs.current-branch != 'main'
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Check if develop2 branch exists
+        id: check-branch
+        uses: GuillaumeFalourd/branch-exists@v1.1
+        with:
+          branch: develop2
+
+      - name: Create develop2 branch if missing
+        if: steps.check-branch.outputs.exists == 'false'
+        run: |
+          git branch develop2
+          git push origin develop2
+          echo "✅ Created develop2 branch from main"
+
+      - name: Test main → develop2 merge
+        id: pr-check
+        run: |
+          echo "Testing MAIN → develop2..."
+          git fetch origin develop2 || true
+          
+          # Checkout develop2 as base, test merging main INTO it
+          git checkout origin/develop2
+          if git merge origin/main --no-commit --no-ff 2>/dev/null; then
+            echo "no-conflicts=true" >> $GITHUB_OUTPUT
+            echo "✅ main → develop2 = CLEAN"
+          else
+            echo "no-conflicts=false" >> $GITHUB_OUTPUT
+            echo "❌ main → develop2 = CONFLICTS"
+          fi
+          
+          git merge --abort || true
+          git checkout main
+
+      - name: Debug output
+        run: echo "no-conflicts: ${{ steps.pr-check.outputs.no-conflicts }}"
+
+      - name: Create PR from main → develop2
