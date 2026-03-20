@@ -51,8 +51,7 @@ jobs:
       
            - name: Test merge conflicts & create PR or merge
         id: pr-check
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: pr-creation
         run: |
           git fetch origin develop2
           
