@@ -67,8 +67,6 @@ jobs:
           git merge --abort || true
           git checkout main
 
-      - name: Debug output
-        run: echo "no-conflicts: ${{ steps.pr-check.outputs.no-conflicts }}"
 
       - name: Create PR from main → develop2 (always)
         id: pull-request
