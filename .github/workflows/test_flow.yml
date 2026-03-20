@@ -48,50 +48,23 @@ jobs:
           git push origin develop2
           echo "✅ Created develop2 branch from main"
 
-      - name: Test merge conflicts (with debug)
+            - name: Test main → develop2 merge
         id: pr-check
         run: |
-          echo "Starting conflict test..."
-          git fetch origin develop2 || echo "Fetch failed"
+          echo "Testing MAIN → develop2..."
           
-          # Test merge and capture exit code explicitly
-          if git merge origin/develop2 --no-commit --no-ff; then
+          # 1. Checkout develop2 as base
+          git checkout origin/develop2
+          
+          # 2. Test merging MAIN into develop2
+          if git merge origin/main --no-commit --no-ff 2>/dev/null; then
             echo "no-conflicts=true" >> $GITHUB_OUTPUT
-            echo "✅ No conflicts detected"
-            git merge --abort || true
+            echo "✅ main → develop2 = CLEAN"
           else
             echo "no-conflicts=false" >> $GITHUB_OUTPUT
-            echo "❌ Conflicts detected"
-            git merge --abort || true
+            echo "❌ main → develop2 = CONFLICTS"
           fi
           
-          # Debug: print the output file
-          cat $GITHUB_OUTPUT || echo "No output file"
+          git merge --abort || true
+          git checkout main
 
-      - name: Debug output values
-        run: |
-          echo "no-conflicts value: ${{ steps.pr-check.outputs.no-conflicts }}"
-
-      - name: Create PR from main → develop2 (always)
-        id: pull-request
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          title: "chore: sync main into develop2"
-          body: "Automated sync from main → develop2"
-          base: develop2
-          branch: "auto-sync-main-${{ github.run_id }}"
-          delete-branch: false
-
-      - name: Auto-merge PR if no conflicts
-        if: steps.pr-check.outputs.no-conflicts == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Auto-merging PR..."
-          gh pr merge "${{ steps.pull-request.outputs.pull-request-url }}" --auto --merge
-        continue-on-error: true
-
-      - name: Skip merge if conflicts (debug)
-        if: steps.pr-check.outputs.no-conflicts != 'true'
-        run: echo "PR created but not merged due to conflicts"
