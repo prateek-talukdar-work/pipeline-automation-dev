@@ -51,20 +51,23 @@ jobs:
       - name: Test merge conflicts
         id: conflict-check
         run: |
-          git fetch origin develop2
+          git fetch origin develop2 || true
           
-          # Only attempt merge if we're on main and develop2 exists
-          if [ "$(git branch --show-current)" = "main" ]; then
-            if git merge origin/develop2 --no-commit --no-ff 2>/dev/null; then
-              echo "has-conflicts=false" >> $GITHUB_OUTPUT
-              git merge --abort || true
-            else
-              echo "has-conflicts=true" >> $GITHUB_OUTPUT
-              git merge --abort || true
-            fi
-          else
-            echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          # Check if merge state exists before aborting
+          if [ -f .git/MERGE_HEAD ]; then
+            git merge --abort || true
           fi
+          
+          # Test merge
+          if git merge origin/develop2 --no-commit --no-ff 2>/dev/null; then
+            echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          else
+            echo "has-conflicts=true" >> $GITHUB_OUTPUT
+          fi
+          
+          # Safe abort - ignores "no merge to abort" error
+          git merge --abort || true
+
 
       - name: Create PR if no conflicts
         if: steps.conflict-check.outputs.has-conflicts == 'false'
