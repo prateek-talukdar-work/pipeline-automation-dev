@@ -52,7 +52,7 @@ jobs:
         id: pr-check
         run: |
           echo "Testing MAIN → develop2..."
-          git switch origin develop2
+          git switch 'origin/develop2'
           git fetch || true
           
           # Checkout develop2 as base, test merging main INTO it
