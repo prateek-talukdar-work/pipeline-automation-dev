@@ -14,3 +14,56 @@ jobs:
     steps:
       - name: Say hello
         run: echo "Hello there"
+      - name: Check if develop2 branch exists
+        id: check-branch
+        uses: GuillaumeFalourd/branch-exists@v1.1
+        with:
+          branch: develop2
+      - name: Create develop2 branch if missing
+        if: steps.check-branch.outputs.exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git checkout main
+          git branch develop2
+          git push origin develop2
+          echo "✅ Created develop2 branch from main"
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test merge conflicts
+        id: conflict-check
+        run: |
+          git fetch origin develop2
+          if git merge origin/develop2 --no-commit --no-ff 2>/dev/null; then
+            echo "has-conflicts=false" >> $GITHUB_OUTPUT
+            git merge --abort
+          else
+            echo "has-conflicts=true" >> $GITHUB_OUTPUT
+            git merge --abort
+          fi
+
+      - name: Create PR if no conflicts
+        if: steps.conflict-check.outputs.has-conflicts == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: sync from main"
+          title: "chore: sync main into develop2"
+          body: "Automated sync from main → develop2\n\n✅ No merge conflicts detected."
+          base: develop2
+          branch: "auto-sync-main-${{ github.run_id }}"
+          delete-branch: true
+
+      - name: Create issue if conflicts
+        if: steps.conflict-check.outputs.has-conflicts == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Merge conflict: main → develop2" \
+            --body "Cannot create PR due to merge conflicts between main and develop2."
+
