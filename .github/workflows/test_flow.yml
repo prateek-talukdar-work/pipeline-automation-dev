@@ -52,10 +52,11 @@ jobs:
         id: pr-check
         run: |
           echo "Testing MAIN → develop2..."
-          git fetch origin develop2 || true
+          git switch origin develop2
+          git fetch || true
           
           # Checkout develop2 as base, test merging main INTO it
-          git checkout origin/develop2
+  
           if git merge origin/main --no-commit --no-ff 2>/dev/null; then
             echo "no-conflicts=true" >> $GITHUB_OUTPUT
             echo "✅ main → develop2 = CLEAN"
