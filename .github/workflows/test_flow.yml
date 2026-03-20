@@ -48,44 +48,43 @@ jobs:
           git push origin develop2
           echo "✅ Created develop2 branch from main"
 
-      - name: Test merge conflicts
-        id: conflict-check
-        run: |
-          git fetch origin develop2 || true
-          
-          # Check if merge state exists before aborting
-          if [ -f .git/MERGE_HEAD ]; then
-            git merge --abort || true
-          fi
-          
-          # Test merge
-          if git merge origin/develop2 --no-commit --no-ff 2>/dev/null; then
-            echo "has-conflicts=false" >> $GITHUB_OUTPUT
-          else
-            echo "has-conflicts=true" >> $GITHUB_OUTPUT
-          fi
-          
-          # Safe abort - ignores "no merge to abort" error
-          git merge --abort || true
-
-
-      - name: Create PR if no conflicts
-        if: steps.conflict-check.outputs.has-conflicts == 'false'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: sync from main"
-          title: "chore: sync main into develop2"
-          body: "Automated sync from main → develop2\n\n✅ No merge conflicts detected."
-          base: develop2
-          branch: "auto-sync-main-${{ github.run_id }}"
-          delete-branch: true
-
-      - name: Create issue if conflicts
-        if: steps.conflict-check.outputs.has-conflicts == 'true'
+      
+           - name: Test merge conflicts & create PR or merge
+        id: pr-check
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh issue create \
-            --title "Merge conflict: main → develop2" \
-            --body "Cannot create PR due to merge conflicts between main and develop2."
+          git fetch origin develop2
+          
+          if git merge origin/develop2 --no-commit --no-ff 2>/dev/null; then
+            echo "no-conflicts=true" >> $GITHUB_OUTPUT
+            git merge --abort || true
+          else
+            echo "no-conflicts=false" >> $GITHUB_OUTPUT
+            git merge --abort || true
+          fi
+
+      - name: Create PR if conflicts
+        if: steps.pr-check.outputs.no-conflicts != 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "❌ Merge conflicts: master → develop2"
+          body: "Automated sync detected merge conflicts.\n\nPlease resolve conflicts and merge manually."
+          base: develop2
+          branch: "auto-sync-master-${{ github.run_id }}"
+          delete-branch: true
+
+      - name: Auto-merge if no conflicts
+        if: steps.pr-check.outputs.no-conflicts == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore: sync master into develop2" \
+            --body "Automated sync from master → develop2\n\n✅ No conflicts - auto-merging..." \
+            --base develop2 \
+            --head "auto-sync-master-${{ github.run_id }}"
+          
+          gh pr merge "auto-sync-master-${{ github.run_id }}" --auto --merge
+
