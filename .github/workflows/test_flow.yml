@@ -11,28 +11,42 @@ jobs:
   post-merge-step:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
     steps:
       - name: Say hello
         run: echo "Hello there"
-      - name: Check if develop2 branch exists
-        id: check-branch
-        uses: GuillaumeFalourd/branch-exists@v1.1
-        with:
-          branch: develop2
-      - name: Create develop2 branch if missing
-        if: steps.check-branch.outputs.exists == 'false'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git checkout main
-          git branch develop2
-          git push origin develop2
-          echo "✅ Created develop2 branch from main"
 
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Get current branch
+        id: current-branch
+        run: echo "current-branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
+
+      - name: Switch to main (if needed)
+        if: steps.current-branch.outputs.current-branch != 'main'
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Check if develop2 branch exists
+        id: check-branch
+        uses: GuillaumeFalourd/branch-exists@v1.1
+        with:
+          branch: develop2
+
+      - name: Create develop2 branch if missing
+        if: steps.check-branch.outputs.exists == 'false'
+        run: |
+          git branch develop2
+          git push origin develop2
+          echo "✅ Created develop2 branch from main"
 
       - name: Test merge conflicts
         id: conflict-check
@@ -66,4 +80,3 @@ jobs:
           gh issue create \
             --title "Merge conflict: main → develop2" \
             --body "Cannot create PR due to merge conflicts between main and develop2."
-
