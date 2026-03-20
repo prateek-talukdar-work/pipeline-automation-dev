@@ -52,12 +52,18 @@ jobs:
         id: conflict-check
         run: |
           git fetch origin develop2
-          if git merge origin/develop2 --no-commit --no-ff 2>/dev/null; then
-            echo "has-conflicts=false" >> $GITHUB_OUTPUT
-            git merge --abort
+          
+          # Only attempt merge if we're on main and develop2 exists
+          if [ "$(git branch --show-current)" = "main" ]; then
+            if git merge origin/develop2 --no-commit --no-ff 2>/dev/null; then
+              echo "has-conflicts=false" >> $GITHUB_OUTPUT
+              git merge --abort || true
+            else
+              echo "has-conflicts=true" >> $GITHUB_OUTPUT
+              git merge --abort || true
+            fi
           else
-            echo "has-conflicts=true" >> $GITHUB_OUTPUT
-            git merge --abort
+            echo "has-conflicts=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create PR if no conflicts
