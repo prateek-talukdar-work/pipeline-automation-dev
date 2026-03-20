@@ -1,0 +1,15 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  post-merge-step:
+    if: github.event.pull_request_merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello
+        run: echo "Hello there"  
