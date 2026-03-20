@@ -81,7 +81,7 @@ jobs:
           body: "Automated sync from main → develop2"
           base: develop2
           branch: "auto-sync-main-${{ github.run_id }}"
-          delete-branch: true
+          delete-branch: false
 
       - name: Auto-merge PR if no conflicts
         if: steps.pr-check.outputs.no-conflicts == 'true'
