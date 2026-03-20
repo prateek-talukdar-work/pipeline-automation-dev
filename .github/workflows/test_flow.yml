@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Say hello
         run: echo "Hello there"
-            - name: Check if develop2 branch exists
+      - name: Check if develop2 branch exists
         id: check-branch
         uses: GuillaumeFalourd/branch-exists@v1.1
         with:
